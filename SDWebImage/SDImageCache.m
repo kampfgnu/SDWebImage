@@ -12,6 +12,7 @@
 #import "SDWebImageDecoder.h"
 #import <mach/mach.h>
 #import <mach/mach_host.h>
+#include <sys/xattr.h>
 
 static const NSInteger kDefaultCacheMaxCacheAge = 60 * 60 * 24 * 7; // 1 week
 
@@ -56,7 +57,7 @@ static const NSInteger kDefaultCacheMaxCacheAge = 60 * 60 * 24 * 7; // 1 week
         _memCache.name = fullNamespace;
 
         // Init the disk cache
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
         _diskCachePath = [paths[0] stringByAppendingPathComponent:fullNamespace];
 
 #if TARGET_OS_IPHONE
@@ -132,6 +133,21 @@ static const NSInteger kDefaultCacheMaxCacheAge = 60 * 60 * 24 * 7; // 1 week
                 if (![fileManager fileExistsAtPath:_diskCachePath])
                 {
                     [fileManager createDirectoryAtPath:_diskCachePath withIntermediateDirectories:YES attributes:nil error:NULL];
+                    //exclude from backup
+                    NSURL *folderPathUrl = [NSURL fileURLWithPath:_diskCachePath];
+//                    NSError *error = nil;
+//                    BOOL success = [folderPathUrl setResourceValue: [NSNumber numberWithBool:YES] forKey:NSURLIsExcludedFromBackupKey error:&error];
+//                    if (! success) {
+//                        NSLog(@"Error excluding %@ from backup %@", [folderPathUrl lastPathComponent], error);
+//                    }
+                    
+                    const char* filePath = [[folderPathUrl path] fileSystemRepresentation];
+                    const char* attrName = "com.apple.MobileBackup";
+                    u_int8_t attrValue = 1;
+                    int result = setxattr(filePath, attrName, &attrValue, sizeof(attrValue), 0, 0);
+                    if (result != 0) {
+                        NSLog(@"Error excluding %@ from backup", [folderPathUrl lastPathComponent]);
+                    }
                 }
 
                 [fileManager createFileAtPath:[self cachePathForKey:key] contents:data attributes:nil];
