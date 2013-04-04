@@ -96,6 +96,11 @@ static const NSInteger kDefaultCacheMaxCacheAge = 60 * 60 * 24 * 7; // 1 week
     return [self.diskCachePath stringByAppendingPathComponent:filename];
 }
 
+- (BOOL)fileExistsAtKey:(NSString *)key {
+    NSString *filepath = [self cachePathForKey:key];
+    return [[NSFileManager defaultManager] fileExistsAtPath:filepath];
+}
+
 #pragma mark ImageCache
 
 - (void)storeImage:(UIImage *)image imageData:(NSData *)imageData forKey:(NSString *)key toDisk:(BOOL)toDisk

@@ -10,6 +10,7 @@
 #import "objc/runtime.h"
 
 static char operationKey;
+static char activityIndicatorKey;
 
 @implementation UIImageView (WebCache)
 
@@ -43,11 +44,30 @@ static char operationKey;
     [self setImageWithURL:url placeholderImage:placeholder options:options progress:nil completed:completedBlock];
 }
 
-- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletedBlock)completedBlock;
+- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletedBlock)completedBlock {
+    [self setImageWithURL:url placeholderImage:placeholder options:options progress:progressBlock completed:completedBlock showActivityIndicator:NO backgroundColor:nil];
+}
+
+- (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletedBlock)completedBlock showActivityIndicator:(BOOL)showActivityIndicator backgroundColor:(UIColor *)backgroundColor
 {
     [self cancelCurrentImageLoad];
 
     self.image = placeholder;
+    
+    if (backgroundColor) self.backgroundColor = backgroundColor;
+    
+    if (showActivityIndicator) {
+        UIActivityIndicatorView *aiv = objc_getAssociatedObject(self, &activityIndicatorKey);
+        if (aiv == nil) {
+            aiv = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
+            aiv.hidesWhenStopped = YES;
+            [self addSubview:aiv];
+            
+            objc_setAssociatedObject(self, &activityIndicatorKey, aiv, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        aiv.center = self.center;
+        [aiv startAnimating];
+    }
     
     if (url)
     {
@@ -55,6 +75,11 @@ static char operationKey;
         id<SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadWithURL:url options:options progress:progressBlock completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished)
         {
             __strong UIImageView *sself = wself;
+            UIActivityIndicatorView *aiv = objc_getAssociatedObject(self, &activityIndicatorKey);
+            if (aiv != nil) {
+                [aiv stopAnimating];
+            }
+            
             if (!sself) return;
             if (image)
             {
